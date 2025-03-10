@@ -1,17 +1,6 @@
-# Next.js
-.next/
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.env*.local
-.env
+# Backend-specific .gitignore
 
-# TypeScript
-*.tsbuildinfo
-next-env.d.ts
-
-# Spring Boot
+# Maven
 target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
@@ -19,61 +8,48 @@ target/
 
 # IDE files
 .idea/
-*.iml
 *.iws
+*.iml
 *.ipr
-.project
-.classpath
 .vscode/
-*.sw?
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
+.classpath
+.project
+.settings/
+.factorypath
+
+# Compiled class files
+*.class
+
+# Log files
+*.log
+logs/
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# JVM crash logs
+hs_err_pid*
+replay_pid*
+
+# Spring Boot
+.spring.boot.properties
+application-*.yml
+!application-dev.yml
+!application-test.yml
+!application-prod.yml
 
 # OS-specific files
 .DS_Store
 Thumbs.db
-
-# Build files
-dist/
-build/
-out/
-
-# Log files
-logs/
-*.log
-
-# Coverage reports
-coverage/
-.nyc_output/
-
-# Dependency directories
-.pnp/
-.pnp.js
-
-# Misc
-.vercel
-.turbo
-
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.settings
-.springBeans
-.sts4-cache
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### Application specific ###
-*.log
-.env
-application-*.properties 
