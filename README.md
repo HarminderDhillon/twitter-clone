@@ -4,8 +4,8 @@ This project is a Twitter clone application with a Spring Boot backend and a Nex
 
 ## Project Structure
 
-- `backend/`: Spring Boot application that provides RESTful API endpoints
-- Frontend: Next.js application with Tailwind CSS for styling
+- `src/main/java`: Spring Boot application that provides RESTful API endpoints
+- Frontend: Next.js application with Tailwind CSS for styling in the project root
 
 ## Getting Started
 
@@ -20,7 +20,7 @@ This project is a Twitter clone application with a Spring Boot backend and a Nex
 
 1. Navigate to the project root directory
 2. Run `./mvnw spring-boot:run` to start the Spring Boot application
-3. The backend will be available at `http://localhost:8080`
+3. The backend will be available at `http://localhost:8081/api`
 
 ### Running the Frontend
 
@@ -33,31 +33,107 @@ This project is a Twitter clone application with a Spring Boot backend and a Nex
    ```bash
    npm run dev
    ```
-4. Open your browser and visit `http://localhost:3000`
+4. Open your browser and visit `http://localhost:3001` (or the port shown in the console output)
+
+## Frontend-Backend Integration
+
+The project uses Next.js API routes to proxy requests to the Spring Boot backend:
+
+- Frontend API calls to `/api/*` are automatically proxied to the backend at `http://localhost:8081/api/*`
+- This is configured in `next.config.js` using the rewrites feature
+- The frontend services provide fallback to mock data when the backend is unreachable
 
 ## Features
 
-- View posts feed
-- View user profiles
-- Mock data is used when backend is not available
+- User Management: Registration, authentication, profiles, follows
+- Posts: Create, reply, repost, and like posts
+- Hashtags: Automatic detection and indexing
+- Timeline: Home timeline, user timeline, and explore feed
+- Notifications: Real-time notifications for likes, replies, follows, etc.
+- Search: Find users, posts, and hashtags
+- Direct Messaging: One-on-one and group chats
 
 ## Technology Stack
 
 ### Backend
-- Spring Boot
-- Spring Data JPA
-- PostgreSQL
-- Liquibase for database migrations
+- **Framework**: Spring Boot 3.x
+- **Database**: PostgreSQL 
+- **ORM**: Spring Data JPA with Hibernate
+- **Cache**: Redis for session management and caching
+- **Security**: JWT-based authentication with Spring Security
+- **Messaging**: WebSockets with STOMP for real-time features
+- **API Documentation**: SpringDoc with OpenAPI (Swagger)
+- **Migration**: Liquibase for database schema migrations (previously Flyway)
 
 ### Frontend
-- Next.js
-- TypeScript
-- Tailwind CSS
-- React Hooks
+- **Framework**: Next.js 14
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **State Management**: React Hooks
+- **API Integration**: Fetch API with proxy configuration
 
-## Development
+### Testing
+- **Unit Testing**: JUnit 5 with Mockito
+- **Integration Testing**: Spring Boot Test
+- **E2E Testing**: REST Assured for API testing
+- **Performance Testing**: JMeter for load testing
+- **Container Testing**: Testcontainers for integration tests
 
-This project is set up for local development with API proxying configured to redirect API calls to the backend server.
+## Project Structure
+
+The project follows standard Spring Boot project structure and best practices:
+
+```
+/
+├── app/                    # Next.js app directory
+│   ├── api/                # API route handlers  
+│   ├── explore/            # Explore page
+│   ├── users/              # User profiles
+│   └── page.tsx            # Home page
+├── components/             # React components
+├── public/                 # Static assets
+├── services/               # Frontend API services
+├── src/                    # Spring Boot application
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── com/
+│   │   │       └── dhillon/
+│   │   │           └── twitterclone/
+│   │   │               ├── config/       # Configuration classes
+│   │   │               ├── controller/   # REST API controllers
+│   │   │               ├── dto/          # Data Transfer Objects
+│   │   │               ├── entity/       # JPA entity classes
+│   │   │               ├── exception/    # Custom exceptions
+│   │   │               ├── repository/   # Spring Data repositories
+│   │   │               ├── security/     # Security configurations
+│   │   │               ├── service/      # Business logic
+│   │   │               └── util/         # Utility classes
+│   │   └── resources/
+│   │       ├── application.yml          # Application configuration
+│   │       ├── db/
+│   │       │   └── changelog/           # Liquibase changelog files
+│   │       └── static/                  # Static resources
+│   └── test/                           # Test classes
+├── next.config.js                      # Next.js configuration
+├── package.json                        # Frontend dependencies
+├── pom.xml                             # Backend dependencies
+├── tsconfig.json                       # TypeScript configuration
+└── README.md                           # This file
+```
+
+## API Documentation
+
+The application uses Springdoc OpenAPI (formerly Swagger) for API documentation. Once the application is running, you can access:
+
+- **Swagger UI**: Interactive API documentation
+  ```
+  http://localhost:8081/api/swagger-ui.html
+  ```
+
+- **OpenAPI Specification**: Raw OpenAPI JSON
+  ```
+  http://localhost:8081/api/api-docs
+  ```
 
 ## License
 
