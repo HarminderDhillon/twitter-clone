@@ -23,7 +23,7 @@ A Twitter clone application built with Spring Boot 3.x as the backend framework.
 - **Security**: JWT-based authentication with Spring Security
 - **Messaging**: WebSockets with STOMP for real-time features
 - **API Documentation**: SpringDoc with OpenAPI (Swagger)
-- **Migration**: Flyway for database schema migrations
+- **Migration**: Liquibase for database schema migrations (previously Flyway)
 
 ### Testing
 - **Unit Testing**: JUnit 5 with Mockito
@@ -54,7 +54,12 @@ src/
 │   │               └── util/          # Utility classes
 │   └── resources/
 │       ├── application.yml           # Application configuration
-│       ├── db/migration/             # Flyway migrations
+│       ├── db/
+│       │   ├── changelog/            # Liquibase changelog files
+│       │   │   ├── changes/          # Individual change sets
+│       │   │   ├── sql/              # SQL-based migrations
+│       │   │   └── db.changelog-master.yaml  # Master changelog
+│       │   └── migration.backup/     # Backup of original Flyway migrations
 │       └── static/                   # Static resources
 └── test/
     └── java/
@@ -278,4 +283,51 @@ To specify the environment:
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Database Migrations
+
+### Liquibase Migration
+
+The application uses Liquibase for database schema migrations. Liquibase offers several advantages over the previously used Flyway:
+
+1. **Multiple Format Support**: Supports XML, YAML, JSON, and SQL formats
+2. **Enhanced Rollback**: Better support for rollback operations
+3. **Preconditions**: Ability to specify preconditions for changesets
+4. **Contexts**: Support for running different changes in different environments
+5. **SQL Generation**: Ability to generate SQL scripts from changesets for DBA review
+
+### Migration Structure
+
+The migration files are organized as follows:
+
+- `db.changelog-master.yaml`: The master changelog file that includes all other changesets
+- `changes/`: Directory containing YAML-based changesets
+- `sql/`: Directory containing SQL-based migrations
+
+### Running Migrations
+
+Migrations are automatically applied when the application starts. The configuration in `application.yml` controls this behavior:
+
+```yaml
+spring:
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    database-change-log-table: DATABASECHANGELOG
+    database-change-log-lock-table: DATABASECHANGELOGLOCK
+```
+
+For different environments, the migration behavior can be customized:
+
+- **Development**: Migrations are disabled by default to allow Hibernate to update the schema
+- **Test**: Migrations are enabled to ensure consistent test data
+- **Production**: Migrations are enabled to ensure controlled schema changes
+
+### Adding New Migrations
+
+To add a new migration:
+
+1. Create a new changeset file in the `changes/` directory or a new SQL file in the `sql/` directory
+2. Add the file to the master changelog (`db.changelog-master.yaml`)
+3. Run the application to apply the migration 
