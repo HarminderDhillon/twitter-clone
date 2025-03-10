@@ -21,10 +21,13 @@ spring:
         format_sql: true
     show-sql: false
   
-  # Flyway Migration
-  flyway:
+  # Liquibase Migration (replaced Flyway)
+  liquibase:
     enabled: true
-    baseline-on-migrate: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    # Similar to Flyway's baseline-on-migrate
+    database-change-log-table: DATABASECHANGELOG
+    database-change-log-lock-table: DATABASECHANGELOGLOCK
   
   # Redis Configuration
   data:
@@ -126,7 +129,7 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
-  flyway:
+  liquibase:
     enabled: false
 
 ---
@@ -140,7 +143,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
-  flyway:
+  liquibase:
     enabled: false
   redis:
     embedded: true
