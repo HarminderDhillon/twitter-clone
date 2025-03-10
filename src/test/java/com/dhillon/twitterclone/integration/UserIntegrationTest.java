@@ -72,19 +72,30 @@ public class UserIntegrationTest {
     
     @Test
     public void createUser_WithValidData_CreatesUserAndReturnsIt() throws Exception {
-        UserDto newUserDto = new UserDto();
-        newUserDto.setUsername("newintuser");
-        newUserDto.setEmail("newint@example.com");
-        newUserDto.setPassword("password123");
-        newUserDto.setDisplayName("New Integration User");
+        UserDto newUserDto = new UserDto(
+            null,
+            "newintuser",
+            "newint@example.com",
+            "New Integration User",
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            0,
+            0,
+            "password123"
+        );
         
         mockMvc.perform(post("/api/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(newUserDto)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.username", is(newUserDto.getUsername())))
-                .andExpect(jsonPath("$.email", is(newUserDto.getEmail())))
-                .andExpect(jsonPath("$.displayName", is(newUserDto.getDisplayName())));
+                .andExpect(jsonPath("$.username", is(newUserDto.username())))
+                .andExpect(jsonPath("$.email", is(newUserDto.email())))
+                .andExpect(jsonPath("$.displayName", is(newUserDto.displayName())));
         
         // Verify the user was actually created in the database
         assertThat(userRepository.findByUsername("newintuser")).isPresent();
@@ -92,16 +103,29 @@ public class UserIntegrationTest {
     
     @Test
     public void updateUser_WithValidData_UpdatesUserAndReturnsIt() throws Exception {
-        UserDto updateDto = new UserDto();
-        updateDto.setDisplayName("Updated Display Name");
-        updateDto.setBio("Updated bio for integration test");
+        UserDto updateDto = new UserDto(
+            null,
+            null,
+            null,
+            "Updated Display Name",
+            "Updated bio for integration test",
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            0,
+            0,
+            null
+        );
         
         mockMvc.perform(put("/api/users/{username}", testUser.getUsername())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(updateDto)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.displayName", is(updateDto.getDisplayName())))
-                .andExpect(jsonPath("$.bio", is(updateDto.getBio())));
+                .andExpect(jsonPath("$.displayName", is(updateDto.displayName())))
+                .andExpect(jsonPath("$.bio", is(updateDto.bio())));
         
         // Verify the user was actually updated in the database
         User updatedUser = userRepository.findById(testUser.getId()).orElseThrow();

@@ -7,21 +7,19 @@ import java.util.List;
 /**
  * Represents an API error response.
  */
-public class ApiError {
-    
-    private LocalDateTime timestamp;
-    private int status;
-    private String error;
-    private String message;
-    private String path;
-    private List<String> details;
-    
+public record ApiError(
+    LocalDateTime timestamp,
+    int status,
+    String error,
+    String message,
+    String path,
+    List<String> details
+) {
     /**
      * Default constructor.
      */
     public ApiError() {
-        this.timestamp = LocalDateTime.now();
-        this.details = new ArrayList<>();
+        this(LocalDateTime.now(), 0, null, null, null, new ArrayList<>());
     }
     
     /**
@@ -33,69 +31,18 @@ public class ApiError {
      * @param path request path
      */
     public ApiError(int status, String error, String message, String path) {
-        this();
-        this.status = status;
-        this.error = error;
-        this.message = message;
-        this.path = path;
-    }
-    
-    // Getters and Setters
-    
-    public LocalDateTime getTimestamp() {
-        return timestamp;
-    }
-    
-    public void setTimestamp(LocalDateTime timestamp) {
-        this.timestamp = timestamp;
-    }
-    
-    public int getStatus() {
-        return status;
-    }
-    
-    public void setStatus(int status) {
-        this.status = status;
-    }
-    
-    public String getError() {
-        return error;
-    }
-    
-    public void setError(String error) {
-        this.error = error;
-    }
-    
-    public String getMessage() {
-        return message;
-    }
-    
-    public void setMessage(String message) {
-        this.message = message;
-    }
-    
-    public String getPath() {
-        return path;
-    }
-    
-    public void setPath(String path) {
-        this.path = path;
-    }
-    
-    public List<String> getDetails() {
-        return details;
-    }
-    
-    public void setDetails(List<String> details) {
-        this.details = details;
+        this(LocalDateTime.now(), status, error, message, path, new ArrayList<>());
     }
     
     /**
-     * Add a detail message to the error.
+     * Adds a detail message to the error.
      *
-     * @param detail the detail message
+     * @param detail the detail message to add
+     * @return the updated ApiError instance
      */
-    public void addDetail(String detail) {
-        this.details.add(detail);
+    public ApiError addDetail(String detail) {
+        List<String> newDetails = new ArrayList<>(this.details);
+        newDetails.add(detail);
+        return new ApiError(this.timestamp, this.status, this.error, this.message, this.path, newDetails);
     }
 } 

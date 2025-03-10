@@ -86,12 +86,12 @@ public class UserController {
     public ResponseEntity<UserDto> createUser(
             @Parameter(description = "User details") @Valid @RequestBody UserDto userDto) {
         // Check if username is available
-        if (!userService.isUsernameAvailable(userDto.getUsername())) {
+        if (!userService.isUsernameAvailable(userDto.username())) {
             throw new BadRequestException("Username is already taken");
         }
         
         // Check if email is available
-        if (!userService.isEmailAvailable(userDto.getEmail())) {
+        if (!userService.isEmailAvailable(userDto.email())) {
             throw new BadRequestException("Email is already registered");
         }
         
@@ -122,13 +122,19 @@ public class UserController {
     public ResponseEntity<UserDto> updateUser(
             @Parameter(description = "Username of the user to update") @PathVariable String username,
             @Parameter(description = "Updated user details") @Valid @RequestBody UserDto userDto) {
+        // Find user
         User user = userService.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
         
-        // Update user
-        User updatedUser = userService.updateUser(user.getId(), UserMapper.updateEntity(user, userDto));
+        // Update the user
+        User updatedUser = UserMapper.updateEntity(user, userDto);
+        User savedUser = userService.updateUser(user.getId(), updatedUser);
         
-        return ResponseEntity.ok(UserMapper.toDto(updatedUser));
+        // Get follower counts
+        long followersCount = followRepository.countByFollowingId(savedUser.getId());
+        long followingCount = followRepository.countByFollowerId(savedUser.getId());
+        
+        return ResponseEntity.ok(UserMapper.toDtoWithCounts(savedUser, followersCount, followingCount));
     }
     
     /**
@@ -137,7 +143,7 @@ public class UserController {
      * @param username the username
      * @return no content response
      */
-    @Operation(summary = "Delete a user", description = "Deletes a user with the specified username")
+    @Operation(summary = "Delete a user", description = "Deletes an existing user")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "204", description = "User deleted successfully"),
         @ApiResponse(responseCode = "404", description = "User not found")
@@ -145,9 +151,11 @@ public class UserController {
     @DeleteMapping("/{username}")
     public ResponseEntity<Void> deleteUser(
             @Parameter(description = "Username of the user to delete") @PathVariable String username) {
+        // Find user
         User user = userService.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
         
+        // Delete the user
         userService.deleteUser(user.getId());
         
         return ResponseEntity.noContent().build();
@@ -157,7 +165,7 @@ public class UserController {
      * Search for users.
      *
      * @param query the search query
-     * @return list of matching user DTOs
+     * @return list of user DTOs
      */
     @Operation(summary = "Search for users", description = "Returns users matching the search query")
     @ApiResponses(value = {

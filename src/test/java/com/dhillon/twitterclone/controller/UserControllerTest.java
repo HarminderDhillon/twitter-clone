@@ -93,10 +93,22 @@ public class UserControllerTest {
     @Test
     public void createUser_WithValidData_ReturnsCreated() throws Exception {
         // Arrange
-        UserDto userDto = new UserDto();
-        userDto.setUsername("newuser");
-        userDto.setEmail("new@example.com");
-        userDto.setPassword("password123");
+        UserDto userDto = new UserDto(
+            null,
+            "newuser",
+            "new@example.com",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            0,
+            0,
+            "password123"
+        );
         
         User newUser = new User();
         newUser.setId(UUID.randomUUID());
@@ -123,10 +135,22 @@ public class UserControllerTest {
     @Test
     public void createUser_WithExistingUsername_ReturnsBadRequest() throws Exception {
         // Arrange
-        UserDto userDto = new UserDto();
-        userDto.setUsername("existing");
-        userDto.setEmail("new@example.com");
-        userDto.setPassword("password123");
+        UserDto userDto = new UserDto(
+            null,
+            "existing",
+            "new@example.com",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            0,
+            0,
+            "password123"
+        );
         
         when(userService.isUsernameAvailable("existing")).thenReturn(false);
         

@@ -24,20 +24,22 @@ public class UserMapper {
             return null;
         }
         
-        UserDto dto = new UserDto();
-        dto.setId(user.getId());
-        dto.setUsername(user.getUsername());
-        dto.setEmail(user.getEmail());
-        dto.setDisplayName(user.getDisplayName());
-        dto.setBio(user.getBio());
-        dto.setLocation(user.getLocation());
-        dto.setWebsite(user.getWebsite());
-        dto.setProfileImage(user.getProfileImage());
-        dto.setHeaderImage(user.getHeaderImage());
-        dto.setVerified(user.isVerified());
-        dto.setCreatedAt(user.getCreatedAt());
-        
-        return dto;
+        return new UserDto(
+            user.getId(),
+            user.getUsername(),
+            user.getEmail(),
+            user.getDisplayName(),
+            user.getBio(),
+            user.getLocation(),
+            user.getWebsite(),
+            user.getProfileImage(),
+            user.getHeaderImage(),
+            user.isVerified(),
+            user.getCreatedAt(),
+            0,
+            0,
+            null
+        );
     }
     
     /**
@@ -49,12 +51,26 @@ public class UserMapper {
      * @return the user DTO with follower counts
      */
     public static UserDto toDtoWithCounts(User user, long followersCount, long followingCount) {
-        UserDto dto = toDto(user);
-        if (dto != null) {
-            dto.setFollowersCount((int) followersCount);
-            dto.setFollowingCount((int) followingCount);
+        if (user == null) {
+            return null;
         }
-        return dto;
+        
+        return new UserDto(
+            user.getId(),
+            user.getUsername(),
+            user.getEmail(),
+            user.getDisplayName(),
+            user.getBio(),
+            user.getLocation(),
+            user.getWebsite(),
+            user.getProfileImage(),
+            user.getHeaderImage(),
+            user.isVerified(),
+            user.getCreatedAt(),
+            (int) followersCount,
+            (int) followingCount,
+            null
+        );
     }
     
     /**
@@ -69,35 +85,26 @@ public class UserMapper {
         }
         
         User user = new User();
-        
-        // ID is typically not set when creating a new user
-        if (dto.getId() != null) {
-            user.setId(dto.getId());
-        }
-        
-        user.setUsername(dto.getUsername());
-        user.setEmail(dto.getEmail());
-        
-        // For password, we only set it if it's a new user or changing password
-        if (dto.getPassword() != null && !dto.getPassword().isEmpty()) {
-            user.setPasswordHash(dto.getPassword()); // This will be encoded by the service
-        }
-        
-        user.setDisplayName(dto.getDisplayName() != null ? dto.getDisplayName() : dto.getUsername());
-        user.setBio(dto.getBio());
-        user.setLocation(dto.getLocation());
-        user.setWebsite(dto.getWebsite());
-        user.setProfileImage(dto.getProfileImage());
-        user.setHeaderImage(dto.getHeaderImage());
+        // Only set the fields that can be updated from the DTO
+        user.setUsername(dto.username());
+        user.setEmail(dto.email());
+        user.setPasswordHash(dto.password()); // Will be encoded by the service
+        user.setDisplayName(dto.displayName());
+        user.setBio(dto.bio());
+        user.setLocation(dto.location());
+        user.setWebsite(dto.website());
+        user.setProfileImage(dto.profileImage());
+        user.setHeaderImage(dto.headerImage());
         
         return user;
     }
     
     /**
-     * Update an existing User entity with data from a UserDto.
+     * Update a User entity with data from a UserDto.
+     * Only updates fields that are allowed to be updated.
      *
-     * @param user the existing user entity
-     * @param dto the user DTO with updates
+     * @param user the user entity to update
+     * @param dto the user DTO with updated data
      * @return the updated user entity
      */
     public static User updateEntity(User user, UserDto dto) {
@@ -105,29 +112,29 @@ public class UserMapper {
             return user;
         }
         
-        // Only update fields that are provided
-        if (dto.getDisplayName() != null) {
-            user.setDisplayName(dto.getDisplayName());
+        // Only update fields that are provided in the DTO
+        if (dto.displayName() != null) {
+            user.setDisplayName(dto.displayName());
         }
         
-        if (dto.getBio() != null) {
-            user.setBio(dto.getBio());
+        if (dto.bio() != null) {
+            user.setBio(dto.bio());
         }
         
-        if (dto.getLocation() != null) {
-            user.setLocation(dto.getLocation());
+        if (dto.location() != null) {
+            user.setLocation(dto.location());
         }
         
-        if (dto.getWebsite() != null) {
-            user.setWebsite(dto.getWebsite());
+        if (dto.website() != null) {
+            user.setWebsite(dto.website());
         }
         
-        if (dto.getProfileImage() != null) {
-            user.setProfileImage(dto.getProfileImage());
+        if (dto.profileImage() != null) {
+            user.setProfileImage(dto.profileImage());
         }
         
-        if (dto.getHeaderImage() != null) {
-            user.setHeaderImage(dto.getHeaderImage());
+        if (dto.headerImage() != null) {
+            user.setHeaderImage(dto.headerImage());
         }
         
         return user;

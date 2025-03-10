@@ -120,13 +120,15 @@ public class PostController {
             @Parameter(description = "ID of the post to update") @PathVariable UUID id,
             @Parameter(description = "Updated post details") @Valid @RequestBody PostDto postDto) {
         
-        // Convert DTO to entity
-        Post post = PostMapper.toEntity(postDto);
+        // Check if post exists
+        Post existingPost = postService.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Post", "id", id));
         
         // Update post
-        Post updatedPost = postService.updatePost(id, post);
+        Post updatedPost = PostMapper.updateEntity(existingPost, postDto);
+        Post savedPost = postService.updatePost(id, updatedPost);
         
-        return ResponseEntity.ok(PostMapper.toDto(updatedPost));
+        return ResponseEntity.ok(PostMapper.toDto(savedPost));
     }
     
     /**

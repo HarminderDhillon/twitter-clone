@@ -24,40 +24,31 @@ public class PostMapper {
             return null;
         }
         
-        PostDto dto = new PostDto();
-        dto.setId(post.getId());
-        dto.setUserId(post.getUser().getId());
-        dto.setUsername(post.getUser().getUsername());
-        dto.setUserDisplayName(post.getUser().getDisplayName() != null ? 
-                post.getUser().getDisplayName() : post.getUser().getUsername());
-        dto.setUserProfileImage(post.getUser().getProfileImage());
-        dto.setContent(post.getContent());
-        dto.setMedia(post.getMedia());
-        dto.setReply(post.isReply());
-        
-        if (post.getParent() != null) {
-            dto.setParentId(post.getParent().getId());
-        }
-        
-        dto.setRepost(post.isRepost());
-        
-        if (post.getOriginalPost() != null) {
-            dto.setOriginalPostId(post.getOriginalPost().getId());
-        }
-        
         // Convert hashtags to strings
         List<String> hashtagNames = post.getHashtags().stream()
                 .map(Hashtag::getName)
                 .collect(Collectors.toList());
-        dto.setHashtags(hashtagNames);
-        
-        dto.setLikeCount(post.getLikeCount());
-        dto.setReplyCount(post.getReplyCount());
-        dto.setRepostCount(post.getRepostCount());
-        dto.setCreatedAt(post.getCreatedAt());
-        dto.setUpdatedAt(post.getUpdatedAt());
-        
-        return dto;
+                
+        return new PostDto(
+            post.getId(),
+            post.getUser().getId(),
+            post.getUser().getUsername(),
+            post.getUser().getDisplayName() != null ? 
+                post.getUser().getDisplayName() : post.getUser().getUsername(),
+            post.getUser().getProfileImage(),
+            post.getContent(),
+            post.getMedia(),
+            post.isReply(),
+            post.getParent() != null ? post.getParent().getId() : null,
+            post.isRepost(),
+            post.getOriginalPost() != null ? post.getOriginalPost().getId() : null,
+            hashtagNames,
+            post.getLikeCount(),
+            post.getReplyCount(),
+            post.getRepostCount(),
+            post.getCreatedAt(),
+            post.getUpdatedAt()
+        );
     }
     
     /**
@@ -90,8 +81,8 @@ public class PostMapper {
         }
         
         Post post = new Post();
-        post.setContent(dto.getContent());
-        post.setMedia(dto.getMedia());
+        post.setContent(dto.content());
+        post.setMedia(dto.media());
         
         return post;
     }
@@ -110,8 +101,8 @@ public class PostMapper {
         }
         
         // Only content can be updated
-        if (dto.getContent() != null) {
-            post.setContent(dto.getContent());
+        if (dto.content() != null) {
+            post.setContent(dto.content());
         }
         
         return post;
