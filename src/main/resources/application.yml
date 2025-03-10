@@ -87,7 +87,7 @@ server:
 logging:
   level:
     root: INFO
-    com.example.twitterclone: DEBUG
+    com.dhillon.twitterclone: DEBUG
     org.springframework.web: INFO
     org.hibernate: INFO
 
@@ -164,4 +164,4 @@ server:
 logging:
   level:
     root: ERROR
-    com.example.twitterclone: INFO 
+    com.dhillon.twitterclone: INFO 
