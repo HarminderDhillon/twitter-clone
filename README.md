@@ -25,6 +25,13 @@ A Twitter clone application built with Spring Boot 3.x as the backend framework.
 - **API Documentation**: SpringDoc with OpenAPI (Swagger)
 - **Migration**: Flyway for database schema migrations
 
+### Testing
+- **Unit Testing**: JUnit 5 with Mockito
+- **Integration Testing**: Spring Boot Test
+- **E2E Testing**: REST Assured for API testing
+- **Performance Testing**: JMeter for load testing
+- **Container Testing**: Testcontainers for integration tests
+
 ## Project Structure
 
 The project follows standard Spring Boot project structure and best practices:
@@ -217,50 +224,36 @@ DevTools sets some properties differently in development to enhance the experien
 
 ## Testing
 
-The application includes comprehensive tests at multiple levels:
+### Running Tests
 
-### Unit Tests
+#### Unit and Integration Tests
 
-To run unit tests:
-```bash
-./mvnw test -Dgroups="UnitTest"
+To run all unit and integration tests:
+
 ```
-
-These tests verify the functionality of individual components in isolation, using mocks for external dependencies.
-
-### Repository Tests
-
-To run repository tests:
-```bash
-./mvnw test -Dgroups="RepositoryTest"
-```
-
-These tests verify the interaction with the database using an in-memory H2 database.
-
-### Controller Tests
-
-To run controller tests:
-```bash
-./mvnw test -Dgroups="ControllerTest"
-```
-
-These tests verify the REST API endpoints using MockMvc.
-
-### Integration Tests
-
-To run integration tests:
-```bash
-./mvnw test -Dgroups="IntegrationTest"
-```
-
-These tests use TestContainers to start a real PostgreSQL database for testing the full application stack.
-
-### All Tests
-
-To run all tests:
-```bash
 ./mvnw test
 ```
+
+#### End-to-End Tests
+
+The application includes E2E tests that test the complete API flow from external HTTP requests to database persistence. These tests are structured to be run in order and simulate a complete user journey through the API.
+
+To run only the E2E tests:
+
+```
+./mvnw test -Pe2e-tests
+```
+
+The E2E tests cover:
+- User Management
+  - Checking username/email availability
+  - User registration
+  - Profile retrieval
+  - User profile updates
+  - User search
+  - User deletion
+
+Additional E2E tests for other features will be added in the future.
 
 ## Test Types
 

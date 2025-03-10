@@ -1,17 +1,21 @@
 package com.dhillon.twitterclone.controller;
 
+import com.dhillon.twitterclone.exception.GlobalExceptionHandler;
 import com.dhillon.twitterclone.dto.UserDto;
 import com.dhillon.twitterclone.entity.User;
+import com.dhillon.twitterclone.exception.ResourceNotFoundException;
 import com.dhillon.twitterclone.repository.FollowRepository;
 import com.dhillon.twitterclone.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.Arrays;
 import java.util.Optional;
@@ -26,26 +30,31 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Controller tests for UserController.
  */
-@WebMvcTest(UserController.class)
+@ExtendWith(MockitoExtension.class)
 public class UserControllerTest {
     
-    @Autowired
     private MockMvc mockMvc;
     
-    @Autowired
-    private ObjectMapper objectMapper;
+    private ObjectMapper objectMapper = new ObjectMapper();
     
-    @MockBean
+    @Mock
     private UserService userService;
     
-    @MockBean
+    @Mock
     private FollowRepository followRepository;
+    
+    @InjectMocks
+    private UserController userController;
     
     private User testUser;
     private UUID testUserId;
     
     @BeforeEach
     public void setup() {
+        mockMvc = MockMvcBuilders.standaloneSetup(userController)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
+        
         testUserId = UUID.randomUUID();
         testUser = new User();
         testUser.setId(testUserId);
@@ -63,7 +72,7 @@ public class UserControllerTest {
         when(followRepository.countByFollowerId(testUserId)).thenReturn(20L);
         
         // Act & Assert
-        mockMvc.perform(get("/api/users/testuser"))
+        mockMvc.perform(get("/users/testuser"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(testUserId.toString())))
                 .andExpect(jsonPath("$.username", is("testuser")))
@@ -82,7 +91,7 @@ public class UserControllerTest {
         when(userService.findByUsername("nonexistent")).thenReturn(Optional.empty());
         
         // Act & Assert
-        mockMvc.perform(get("/api/users/nonexistent"))
+        mockMvc.perform(get("/users/nonexistent"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status", is(404)))
                 .andExpect(jsonPath("$.error", is("Not Found")));
@@ -96,7 +105,7 @@ public class UserControllerTest {
         UserDto userDto = new UserDto(
             null,
             "newuser",
-            "new@example.com",
+            "new@example.com", 
             null,
             null,
             null,
@@ -120,7 +129,7 @@ public class UserControllerTest {
         when(userService.createUser(any(User.class))).thenReturn(newUser);
         
         // Act & Assert
-        mockMvc.perform(post("/api/users")
+        mockMvc.perform(post("/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(userDto)))
                 .andExpect(status().isCreated())
@@ -155,7 +164,7 @@ public class UserControllerTest {
         when(userService.isUsernameAvailable("existing")).thenReturn(false);
         
         // Act & Assert
-        mockMvc.perform(post("/api/users")
+        mockMvc.perform(post("/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(userDto)))
                 .andExpect(status().isBadRequest())
@@ -183,7 +192,7 @@ public class UserControllerTest {
         when(followRepository.countByFollowerId(any(UUID.class))).thenReturn(0L);
         
         // Act & Assert
-        mockMvc.perform(get("/api/users/search").param("query", "test"))
+        mockMvc.perform(get("/users/search").param("query", "test"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[0].username", is("test1")))
@@ -198,9 +207,9 @@ public class UserControllerTest {
         when(userService.isUsernameAvailable("available")).thenReturn(true);
         
         // Act & Assert
-        mockMvc.perform(get("/api/users/check-username").param("username", "available"))
+        mockMvc.perform(get("/users/check-username").param("username", "available"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("true"));
+                .andExpect(jsonPath("$.available").value(true));
         
         verify(userService).isUsernameAvailable("available");
     }
@@ -211,10 +220,141 @@ public class UserControllerTest {
         when(userService.isUsernameAvailable("taken")).thenReturn(false);
         
         // Act & Assert
-        mockMvc.perform(get("/api/users/check-username").param("username", "taken"))
+        mockMvc.perform(get("/users/check-username").param("username", "taken"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("false"));
+                .andExpect(jsonPath("$.available").value(false));
         
         verify(userService).isUsernameAvailable("taken");
+    }
+    
+    @Test
+    public void isEmailAvailable_WhenAvailable_ReturnsTrue() throws Exception {
+        // Arrange
+        when(userService.isEmailAvailable("available@example.com")).thenReturn(true);
+        
+        // Act & Assert
+        mockMvc.perform(get("/users/check-email").param("email", "available@example.com"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.available").value(true));
+        
+        verify(userService).isEmailAvailable("available@example.com");
+    }
+    
+    @Test
+    public void isEmailAvailable_WhenNotAvailable_ReturnsFalse() throws Exception {
+        // Arrange
+        when(userService.isEmailAvailable("taken@example.com")).thenReturn(false);
+        
+        // Act & Assert
+        mockMvc.perform(get("/users/check-email").param("email", "taken@example.com"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.available").value(false));
+        
+        verify(userService).isEmailAvailable("taken@example.com");
+    }
+    
+    @Test
+    public void updateUser_WithValidData_ReturnsOk() throws Exception {
+        // Arrange
+        UserDto updateDto = new UserDto(
+            testUserId,
+            "johndoe",
+            "john@example.com",
+            "Updated Name",
+            "Updated bio",
+            "New York",
+            "http://example.com",
+            "http://example.com/profile.jpg",
+            "http://example.com/header.jpg",
+            false,
+            null,
+            0,
+            0,
+            null
+        );
+        
+        // Create an updated user with the new display name
+        User updatedUser = new User();
+        updatedUser.setId(testUserId);
+        updatedUser.setUsername("johndoe");
+        updatedUser.setEmail("john@example.com");
+        updatedUser.setDisplayName("Updated Name");
+        updatedUser.setBio("Updated bio");
+        updatedUser.setLocation("New York");
+        updatedUser.setWebsite("http://example.com");
+        updatedUser.setProfileImage("http://example.com/profile.jpg");
+        updatedUser.setHeaderImage("http://example.com/header.jpg");
+        
+        when(userService.findByUsername("johndoe")).thenReturn(Optional.of(testUser));
+        when(userService.updateUser(eq(testUserId), any(User.class))).thenReturn(updatedUser);
+        when(followRepository.countByFollowingId(testUserId)).thenReturn(10L);
+        when(followRepository.countByFollowerId(testUserId)).thenReturn(20L);
+        
+        // Act & Assert
+        mockMvc.perform(put("/users/johndoe")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateDto)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.displayName").value("Updated Name"));
+        
+        verify(userService).findByUsername("johndoe");
+        verify(userService).updateUser(eq(testUserId), any(User.class));
+    }
+    
+    @Test
+    public void updateUser_WhenUserDoesNotExist_ReturnsNotFound() throws Exception {
+        // Arrange
+        UserDto updateDto = new UserDto(
+            UUID.randomUUID(),
+            "nonexistent",
+            "nonexistent@example.com",
+            "Nonexistent User",
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            0,
+            0,
+            null
+        );
+        
+        when(userService.findByUsername("nonexistent")).thenReturn(Optional.empty());
+        
+        // Act & Assert
+        mockMvc.perform(put("/users/nonexistent")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateDto)))
+                .andExpect(status().isNotFound());
+        
+        verify(userService).findByUsername("nonexistent");
+    }
+    
+    @Test
+    public void deleteUser_WhenUserExists_ReturnsNoContent() throws Exception {
+        // Arrange
+        when(userService.findByUsername("johndoe")).thenReturn(Optional.of(testUser));
+        doNothing().when(userService).deleteUser(testUserId);
+        
+        // Act & Assert
+        mockMvc.perform(delete("/users/johndoe"))
+                .andExpect(status().isNoContent());
+        
+        verify(userService).findByUsername("johndoe");
+        verify(userService).deleteUser(testUserId);
+    }
+    
+    @Test
+    public void deleteUser_WhenUserDoesNotExist_ReturnsNotFound() throws Exception {
+        // Arrange
+        when(userService.findByUsername("nonexistent")).thenReturn(Optional.empty());
+        
+        // Act & Assert
+        mockMvc.perform(delete("/users/nonexistent"))
+                .andExpect(status().isNotFound());
+        
+        verify(userService).findByUsername("nonexistent");
     }
 } 

@@ -200,9 +200,9 @@ public class UserController {
                     content = @Content(schema = @Schema(implementation = Boolean.class)))
     })
     @GetMapping("/check-username")
-    public ResponseEntity<Boolean> isUsernameAvailable(
+    public ResponseEntity<Object> isUsernameAvailable(
             @Parameter(description = "Username to check") @RequestParam String username) {
-        return ResponseEntity.ok(userService.isUsernameAvailable(username));
+        return ResponseEntity.ok(java.util.Map.of("available", userService.isUsernameAvailable(username)));
     }
     
     /**
@@ -217,8 +217,8 @@ public class UserController {
                     content = @Content(schema = @Schema(implementation = Boolean.class)))
     })
     @GetMapping("/check-email")
-    public ResponseEntity<Boolean> isEmailAvailable(
+    public ResponseEntity<Object> isEmailAvailable(
             @Parameter(description = "Email to check") @RequestParam String email) {
-        return ResponseEntity.ok(userService.isEmailAvailable(email));
+        return ResponseEntity.ok(java.util.Map.of("available", userService.isEmailAvailable(email)));
     }
 } 

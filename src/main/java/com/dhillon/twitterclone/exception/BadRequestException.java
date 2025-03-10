@@ -1,7 +1,7 @@
 package com.dhillon.twitterclone.exception;
 
 /**
- * Exception thrown when a request is invalid or malformed.
+ * Exception thrown when a request is invalid.
  */
 public class BadRequestException extends RuntimeException {
     
