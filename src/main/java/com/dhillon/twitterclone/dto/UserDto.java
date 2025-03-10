@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.Map;
 
 /**
  * Data Transfer Object for User entity.
@@ -62,25 +63,35 @@ public record UserDto(
     @Schema(description = "Password for user registration or update", example = "SecureP@ssw0rd", minLength = 8, maxLength = 100, accessMode = Schema.AccessMode.WRITE_ONLY)
     String password
 ) {
-    /**
-     * Default constructor for deserialization.
-     */
-    public UserDto() {
-        this(null, null, null, null, null, null, null, null, null, false, null, 0, 0, null);
+    // Factory methods for common use cases
+    
+    // Create a user for registration
+    public static UserDto forRegistration(String username, String email, String password) {
+        return new UserDto(
+            null, username, email, username, null, null, null, null, null, 
+            false, LocalDateTime.now(), 0, 0, password
+        );
     }
     
-    /**
-     * Compact constructor to validate and normalize data.
-     */
-    public UserDto {
-        // Normalize username to lowercase if not null
-        if (username != null) {
-            username = username.toLowerCase();
-        }
-        
-        // Normalize email to lowercase if not null
-        if (email != null) {
-            email = email.toLowerCase();
-        }
+    // Create a minimal user representation
+    public static UserDto basic(UUID id, String username, String displayName, String profileImage) {
+        return new UserDto(
+            id, username, null, displayName, null, null, null, 
+            profileImage, null, false, null, 0, 0, null
+        );
+    }
+    
+    // Create a UserDto for error responses
+    public static UserDto forError(Map<String, String> errors) {
+        // Create a simple user with error message in the username field
+        // This is a workaround since we can't add additional fields to the record
+        return new UserDto(
+            null, 
+            errors.getOrDefault("username", "Error"), 
+            errors.getOrDefault("email", "error@example.com"),
+            "Error",
+            null, null, null, null, null,
+            false, null, 0, 0, null
+        );
     }
 } 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fetchPosts } from '@/app/api/posts';
+import { fetchPosts } from '@/services/posts';
 import { Post } from '@/types';
 import { PostCard } from '@/components/posts/PostCard';
 
@@ -9,17 +9,43 @@ export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [apiResponse, setApiResponse] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadPosts() {
       try {
+        console.log('Home: Loading posts from API');
         const data = await fetchPosts();
-        setPosts(data);
+        console.log('Home: Posts loaded successfully:', data);
+        
+        // Map backend response to frontend format if needed
+        const formattedPosts = data.map((post: any) => {
+          // If the post doesn't have a user object, create one from the post data
+          if (!post.user) {
+            return {
+              ...post,
+              user: {
+                id: post.userId || '',
+                username: post.username || '',
+                displayName: post.displayName || '',
+                profileImage: post.profileImage || null,
+                verified: false,
+                followersCount: 0,
+                followingCount: 0,
+                createdAt: post.createdAt
+              }
+            };
+          }
+          return post;
+        });
+        
+        setPosts(formattedPosts);
         setLoading(false);
       } catch (err) {
+        console.error('Home: Error loading posts:', err);
         setError("Error loading posts. Make sure your backend server is running at http://localhost:8080/api");
+        setApiResponse(err instanceof Error ? err.toString() : JSON.stringify(err));
         setLoading(false);
-        console.error(err);
       }
     }
 
@@ -48,6 +74,12 @@ export default function Home() {
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded mb-4">
             <p>{error}</p>
+            {apiResponse && (
+              <div className="mt-4 p-4 bg-gray-100 rounded-lg overflow-auto">
+                <h3 className="font-bold mb-2">API Response Debug Info:</h3>
+                <pre className="text-xs">{apiResponse}</pre>
+              </div>
+            )}
           </div>
         )}
         

@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { fetchUserByUsername } from '@/app/api/users';
-import { fetchPosts } from '@/app/api/posts';
+import { fetchUserByUsername } from '@/services/users';
+import { fetchPosts } from '@/services/posts';
 import { Post, User } from '@/types';
 import { PostCard } from '@/components/posts/PostCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -17,19 +17,24 @@ export default function UserProfile() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [apiResponse, setApiResponse] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadUserAndPosts() {
       try {
         setLoading(true);
         
+        console.log(`Fetching user data for username: ${username}`);
         // Fetch user data
         const userData = await fetchUserByUsername(username);
+        console.log('User data received:', userData);
         setUser(userData);
         
         if (userData) {
           // Fetch user posts
+          console.log(`Fetching posts for user: ${username}`);
           const postsData = await fetchPosts();
+          console.log('Posts data received:', postsData);
           // Filter posts by user
           const userPosts = postsData.filter(post => post.user.username === username);
           setPosts(userPosts);
@@ -38,7 +43,8 @@ export default function UserProfile() {
         setLoading(false);
       } catch (err) {
         console.error('Error loading user profile:', err);
-        setError('Error loading user profile. Please try again later.');
+        setError(`Error loading user profile. ${err instanceof Error ? err.message : 'Please try again later.'}`);
+        setApiResponse(err instanceof Error ? err.toString() : JSON.stringify(err));
         setLoading(false);
       }
     }
@@ -60,6 +66,12 @@ export default function UserProfile() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8">
         <ErrorMessage message={error} />
+        {apiResponse && (
+          <div className="mt-4 p-4 bg-gray-100 rounded-lg overflow-auto">
+            <h3 className="font-bold mb-2">API Response Debug Info:</h3>
+            <pre className="text-xs">{apiResponse}</pre>
+          </div>
+        )}
       </div>
     );
   }
@@ -126,10 +138,10 @@ export default function UserProfile() {
           
           <div className="flex mt-4 space-x-4 text-sm">
             <div>
-              <span className="font-bold">{user.followingCount}</span> Following
+              <span className="font-bold">{user.followingCount || 0}</span> Following
             </div>
             <div>
-              <span className="font-bold">{user.followersCount}</span> Followers
+              <span className="font-bold">{user.followersCount || 0}</span> Followers
             </div>
             <div>
               Joined {new Date(user.createdAt).toLocaleDateString()}

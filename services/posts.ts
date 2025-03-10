@@ -2,28 +2,70 @@ import { Post } from '@/types';
 
 export async function fetchPosts(): Promise<Post[]> {
   try {
-    const response = await fetch('/api/posts');
+    console.log('Fetching posts from API');
+    const response = await fetch('/api/posts', {
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    
+    console.log('Posts API response status:', response.status);
+    
     if (!response.ok) {
-      throw new Error(`Error fetching posts: ${response.status}`);
+      // Try to read the error message from the response
+      let errorText = '';
+      try {
+        const errorData = await response.text();
+        errorText = errorData;
+      } catch (e) {
+        console.error('Failed to parse error response:', e);
+      }
+      
+      throw new Error(`Error fetching posts: ${response.status} ${response.statusText}\n${errorText}`);
     }
-    return response.json();
+    
+    const data = await response.json();
+    console.log('Posts data received:', data);
+    return data;
   } catch (error) {
     console.error('Error fetching posts:', error);
     // Return mock data if API call fails
+    console.warn('Falling back to mock posts data');
     return getMockPosts();
   }
 }
 
 export async function fetchPostById(id: string): Promise<Post> {
   try {
-    const response = await fetch(`/api/posts/${id}`);
+    console.log(`Fetching post with ID: ${id}`);
+    const response = await fetch(`/api/posts/${id}`, {
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    
+    console.log(`Post ${id} API response status:`, response.status);
+    
     if (!response.ok) {
-      throw new Error(`Error fetching post: ${response.status}`);
+      // Try to read the error message from the response
+      let errorText = '';
+      try {
+        const errorData = await response.text();
+        errorText = errorData;
+      } catch (e) {
+        console.error('Failed to parse error response:', e);
+      }
+      
+      throw new Error(`Error fetching post: ${response.status} ${response.statusText}\n${errorText}`);
     }
-    return response.json();
+    
+    const data = await response.json();
+    console.log('Post data received:', data);
+    return data;
   } catch (error) {
     console.error(`Error fetching post ${id}:`, error);
     // Return mock data if API call fails
+    console.warn('Falling back to mock post data');
     return getMockPosts()[0];
   }
 }

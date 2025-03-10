@@ -28,7 +28,7 @@ public class PostMapper {
         List<String> hashtagNames = post.getHashtags().stream()
                 .map(Hashtag::getName)
                 .collect(Collectors.toList());
-                
+        
         return new PostDto(
             post.getId(),
             post.getUser().getId(),
@@ -38,16 +38,14 @@ public class PostMapper {
             post.getUser().getProfileImage(),
             post.getContent(),
             post.getMedia(),
-            post.isReply(),
-            post.getParent() != null ? post.getParent().getId() : null,
-            post.isRepost(),
-            post.getOriginalPost() != null ? post.getOriginalPost().getId() : null,
-            hashtagNames,
             post.getLikeCount(),
-            post.getReplyCount(),
             post.getRepostCount(),
+            post.getReplyCount(),
+            false, // liked - would need to be set based on current user
+            false, // retweeted - would need to be set based on current user
             post.getCreatedAt(),
-            post.getUpdatedAt()
+            hashtagNames,
+            new ArrayList<>() // mentions - would need to be extracted
         );
     }
     
@@ -81,6 +79,7 @@ public class PostMapper {
         }
         
         Post post = new Post();
+        post.setId(dto.id());
         post.setContent(dto.content());
         post.setMedia(dto.media());
         

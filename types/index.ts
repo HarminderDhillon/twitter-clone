@@ -1,24 +1,40 @@
 export type User = {
   id: string;
   username: string;
+  email?: string;
   displayName: string;
   bio?: string;
-  profileImage?: string;
-  headerImage?: string;
+  location?: string;
+  website?: string;
+  profileImage?: string | null;
+  headerImage?: string | null;
   followersCount: number;
   followingCount: number;
   verified: boolean;
   createdAt: string;
+  password?: string | null;
 };
 
 export type Post = {
   id: string;
+  userId?: string;
+  username?: string;
+  displayName?: string;
+  profileImage?: string | null;
   content: string;
+  media?: string[];
   user: User;
   createdAt: string;
-  likesCount: number;
-  repostsCount: number;
-  repliesCount: number;
+  likesCount?: number;
+  repostsCount?: number;
+  repliesCount?: number;
+  likeCount?: number;
+  retweetCount?: number;
+  replyCount?: number;
+  liked?: boolean;
+  retweeted?: boolean;
   isReply?: boolean;
   isRepost?: boolean;
+  hashtags?: string[];
+  mentions?: string[];
 }; 

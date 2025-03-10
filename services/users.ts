@@ -2,28 +2,70 @@ import { User } from '@/types';
 
 export async function fetchUsers(): Promise<User[]> {
   try {
-    const response = await fetch('/api/users');
+    console.log('Fetching users from API');
+    const response = await fetch('/api/users', {
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    
+    console.log('Users API response status:', response.status);
+    
     if (!response.ok) {
-      throw new Error(`Error fetching users: ${response.status}`);
+      // Try to read the error message from the response
+      let errorText = '';
+      try {
+        const errorData = await response.text();
+        errorText = errorData;
+      } catch (e) {
+        console.error('Failed to parse error response:', e);
+      }
+      
+      throw new Error(`Error fetching users: ${response.status} ${response.statusText}\n${errorText}`);
     }
-    return response.json();
+    
+    const data = await response.json();
+    console.log('Users data received:', data);
+    return data;
   } catch (error) {
     console.error('Error fetching users:', error);
     // Return mock data if API call fails
+    console.warn('Falling back to mock users data');
     return getMockUsers();
   }
 }
 
 export async function fetchUserByUsername(username: string): Promise<User> {
   try {
-    const response = await fetch(`/api/users/username/${username}`);
+    console.log(`Fetching user with username: ${username}`);
+    const response = await fetch(`/api/users/${username}`, {
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    
+    console.log(`User ${username} API response status:`, response.status);
+    
     if (!response.ok) {
-      throw new Error(`Error fetching user: ${response.status}`);
+      // Try to read the error message from the response
+      let errorText = '';
+      try {
+        const errorData = await response.text();
+        errorText = errorData;
+      } catch (e) {
+        console.error('Failed to parse error response:', e);
+      }
+      
+      throw new Error(`Error fetching user: ${response.status} ${response.statusText}\n${errorText}`);
     }
-    return response.json();
+    
+    const data = await response.json();
+    console.log('User data received:', data);
+    return data;
   } catch (error) {
     console.error(`Error fetching user ${username}:`, error);
     // Return mock data if API call fails
+    console.warn('Falling back to mock user data');
     return getMockUsers().find(user => user.username.toLowerCase() === username.toLowerCase()) || getMockUsers()[0];
   }
 }

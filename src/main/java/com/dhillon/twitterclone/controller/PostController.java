@@ -3,18 +3,14 @@ package com.dhillon.twitterclone.controller;
 import com.dhillon.twitterclone.dto.PostDto;
 import com.dhillon.twitterclone.entity.Post;
 import com.dhillon.twitterclone.entity.User;
-import com.dhillon.twitterclone.exception.ResourceNotFoundException;
 import com.dhillon.twitterclone.service.PostService;
 import com.dhillon.twitterclone.service.UserService;
-import com.dhillon.twitterclone.util.PostMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,7 +18,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -31,363 +30,169 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequestMapping("/posts")
-@Tag(name = "Posts", description = "Post management APIs")
+@Tag(name = "Post", description = "Post management APIs")
 public class PostController {
     
     private final PostService postService;
     private final UserService userService;
     
-    /**
-     * Constructor with dependencies.
-     *
-     * @param postService the post service
-     * @param userService the user service
-     */
     public PostController(PostService postService, UserService userService) {
         this.postService = postService;
         this.userService = userService;
     }
     
-    /**
-     * Get a post by ID.
-     *
-     * @param id the post ID
-     * @return the post DTO
-     */
-    @Operation(summary = "Get a post by its ID", description = "Returns a post based on the provided ID")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Post found", 
-                    content = @Content(schema = @Schema(implementation = PostDto.class))),
-        @ApiResponse(responseCode = "404", description = "Post not found")
-    })
+    @GetMapping
+    @Operation(summary = "Get all posts", description = "Retrieve a list of all posts")
+    @ApiResponse(responseCode = "200", description = "Posts retrieved successfully",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = PostDto.class)))
+    public ResponseEntity<List<PostDto>> getAllPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Post> posts = postService.searchPosts("", pageable);
+        List<PostDto> postDTOs = posts.getContent().stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(postDTOs);
+    }
+    
     @GetMapping("/{id}")
+    @Operation(summary = "Get post by ID", description = "Retrieve a specific post by its ID")
+    @ApiResponse(responseCode = "200", description = "Post retrieved successfully")
+    @ApiResponse(responseCode = "404", description = "Post not found")
     public ResponseEntity<PostDto> getPostById(
-            @Parameter(description = "ID of the post to retrieve") @PathVariable UUID id) {
-        Post post = postService.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Post", "id", id));
-        
-        return ResponseEntity.ok(PostMapper.toDto(post));
+            @Parameter(description = "ID of the post to retrieve", required = true)
+            @PathVariable UUID id) {
+        return postService.findById(id)
+                .map(post -> ResponseEntity.ok(convertToDto(post)))
+                .orElse(ResponseEntity.notFound().build());
     }
     
-    /**
-     * Create a new post.
-     *
-     * @param postDto the post details
-     * @param username the username of the post creator
-     * @return the created post DTO
-     */
-    @Operation(summary = "Create a new post", description = "Creates a new post for the specified user")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "Post created successfully", 
-                    content = @Content(schema = @Schema(implementation = PostDto.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid input"),
-        @ApiResponse(responseCode = "404", description = "User not found")
-    })
-    @PostMapping("/user/{username}")
+    @GetMapping("/user/{userId}")
+    @Operation(summary = "Get posts by user ID", description = "Retrieve all posts from a specific user")
+    @ApiResponse(responseCode = "200", description = "Posts retrieved successfully")
+    public ResponseEntity<List<PostDto>> getPostsByUserId(
+            @Parameter(description = "ID of the user", required = true)
+            @PathVariable UUID userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Post> posts = postService.getUserTimeline(userId, pageable);
+        List<PostDto> postDTOs = posts.getContent().stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(postDTOs);
+    }
+    
+    @PostMapping
+    @Operation(summary = "Create post", description = "Create a new post")
+    @ApiResponse(responseCode = "201", description = "Post created successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid post data")
     public ResponseEntity<PostDto> createPost(
-            @Parameter(description = "Post details") @Valid @RequestBody PostDto postDto,
-            @Parameter(description = "Username of the post creator") @PathVariable String username) {
-        
-        User user = userService.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
-        
-        // Convert DTO to entity
-        Post post = PostMapper.toEntity(postDto);
-        post.setUser(user);
-        
-        // Create post
-        Post savedPost = postService.createPost(post);
-        
-        return ResponseEntity.status(HttpStatus.CREATED).body(PostMapper.toDto(savedPost));
+            @Parameter(description = "Post data for creating a new post", required = true)
+            @RequestBody PostDto postDto) {
+        Post post = convertToEntity(postDto);
+        Post createdPost = postService.createPost(post);
+        return ResponseEntity.status(HttpStatus.CREATED).body(convertToDto(createdPost));
     }
     
-    /**
-     * Update a post.
-     *
-     * @param id the post ID
-     * @param postDto the updated post details
-     * @return the updated post DTO
-     */
-    @Operation(summary = "Update a post", description = "Updates an existing post with the provided details")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Post updated successfully", 
-                    content = @Content(schema = @Schema(implementation = PostDto.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid input"),
-        @ApiResponse(responseCode = "404", description = "Post not found")
-    })
     @PutMapping("/{id}")
+    @Operation(summary = "Update post", description = "Update an existing post")
+    @ApiResponse(responseCode = "200", description = "Post updated successfully")
+    @ApiResponse(responseCode = "404", description = "Post not found")
     public ResponseEntity<PostDto> updatePost(
-            @Parameter(description = "ID of the post to update") @PathVariable UUID id,
-            @Parameter(description = "Updated post details") @Valid @RequestBody PostDto postDto) {
-        
-        // Check if post exists
-        Post existingPost = postService.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Post", "id", id));
-        
-        // Update post
-        Post updatedPost = PostMapper.updateEntity(existingPost, postDto);
-        Post savedPost = postService.updatePost(id, updatedPost);
-        
-        return ResponseEntity.ok(PostMapper.toDto(savedPost));
+            @Parameter(description = "ID of the post to update", required = true)
+            @PathVariable UUID id,
+            @Parameter(description = "Updated post data", required = true)
+            @RequestBody PostDto postDto) {
+        Post post = convertToEntity(postDto);
+        Post updatedPost = postService.updatePost(id, post);
+        return ResponseEntity.ok(convertToDto(updatedPost));
     }
     
-    /**
-     * Delete a post.
-     *
-     * @param id the post ID
-     * @return no content response
-     */
-    @Operation(summary = "Delete a post", description = "Deletes a post with the specified ID")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "204", description = "Post deleted successfully"),
-        @ApiResponse(responseCode = "404", description = "Post not found")
-    })
     @DeleteMapping("/{id}")
+    @Operation(summary = "Delete post", description = "Delete an existing post")
+    @ApiResponse(responseCode = "204", description = "Post deleted successfully")
+    @ApiResponse(responseCode = "404", description = "Post not found")
     public ResponseEntity<Void> deletePost(
-            @Parameter(description = "ID of the post to delete") @PathVariable UUID id) {
+            @Parameter(description = "ID of the post to delete", required = true)
+            @PathVariable UUID id) {
         postService.deletePost(id);
         return ResponseEntity.noContent().build();
     }
     
-    /**
-     * Get user timeline (posts by a specific user).
-     *
-     * @param username the username
-     * @param page the page number (0-based)
-     * @param size the page size
-     * @return page of post DTOs
-     */
-    @Operation(summary = "Get user timeline", description = "Returns posts created by a specific user")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Timeline retrieved successfully", 
-                    content = @Content(schema = @Schema(implementation = Page.class))),
-        @ApiResponse(responseCode = "404", description = "User not found")
-    })
-    @GetMapping("/user/{username}")
-    public ResponseEntity<Page<PostDto>> getUserTimeline(
-            @Parameter(description = "Username of the user") @PathVariable String username,
-            @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size) {
-        
-        User user = userService.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
-        
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Post> posts = postService.getUserTimeline(user.getId(), pageable);
-        
-        Page<PostDto> postDtos = posts.map(PostMapper::toDto);
-        
-        return ResponseEntity.ok(postDtos);
+    @PostMapping("/{parentId}/reply")
+    @Operation(summary = "Create reply", description = "Create a reply to an existing post")
+    @ApiResponse(responseCode = "201", description = "Reply created successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid reply data")
+    public ResponseEntity<PostDto> createReply(
+            @Parameter(description = "ID of the parent post", required = true)
+            @PathVariable UUID parentId,
+            @Parameter(description = "Reply data", required = true)
+            @RequestBody PostDto replyDto) {
+        Post reply = convertToEntity(replyDto);
+        Post createdReply = postService.createReply(parentId, reply);
+        return ResponseEntity.status(HttpStatus.CREATED).body(convertToDto(createdReply));
+    }
+    
+    @PostMapping("/{originalPostId}/repost")
+    @Operation(summary = "Create repost", description = "Repost an existing post")
+    @ApiResponse(responseCode = "201", description = "Repost created successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid repost data")
+    public ResponseEntity<PostDto> createRepost(
+            @Parameter(description = "ID of the original post", required = true)
+            @PathVariable UUID originalPostId,
+            @Parameter(description = "Repost data", required = true)
+            @RequestBody PostDto repostDto) {
+        Post repost = convertToEntity(repostDto);
+        Post createdRepost = postService.createRepost(originalPostId, repost);
+        return ResponseEntity.status(HttpStatus.CREATED).body(convertToDto(createdRepost));
     }
     
     /**
-     * Get home timeline (posts from followed users).
-     *
-     * @param username the username
-     * @param page the page number (0-based)
-     * @param size the page size
-     * @return page of post DTOs
+     * Converts Post entity to PostDto
      */
-    @Operation(summary = "Get home timeline", description = "Returns posts from users followed by the specified user")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Home timeline retrieved successfully", 
-                    content = @Content(schema = @Schema(implementation = Page.class))),
-        @ApiResponse(responseCode = "404", description = "User not found")
-    })
-    @GetMapping("/home/{username}")
-    public ResponseEntity<Page<PostDto>> getHomeTimeline(
-            @Parameter(description = "Username of the user") @PathVariable String username,
-            @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size) {
+    private PostDto convertToDto(Post post) {
+        // Convert hashtags to strings
+        List<String> hashtagNames = post.getHashtags().stream()
+                .map(hashtag -> hashtag.getName())
+                .collect(Collectors.toList());
         
-        User user = userService.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
-        
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Post> posts = postService.getHomeTimeline(user.getId(), pageable);
-        
-        Page<PostDto> postDtos = posts.map(PostMapper::toDto);
-        
-        return ResponseEntity.ok(postDtos);
+        return new PostDto(
+            post.getId(),
+            post.getUser().getId(),
+            post.getUser().getUsername(),
+            post.getUser().getDisplayName() != null ? 
+                post.getUser().getDisplayName() : post.getUser().getUsername(),
+            post.getUser().getProfileImage(),
+            post.getContent(),
+            post.getMedia(),
+            post.getLikeCount(),
+            post.getRepostCount(),
+            post.getReplyCount(),
+            false, // liked status would need to be set based on current user
+            false, // retweeted status would need to be set based on current user
+            post.getCreatedAt(),
+            hashtagNames,
+            new ArrayList<>() // mentions would need to be extracted
+        );
     }
     
     /**
-     * Search for posts.
-     *
-     * @param query the search query
-     * @param page the page number (0-based)
-     * @param size the page size
-     * @return page of post DTOs
+     * Converts PostDto to Post entity
      */
-    @Operation(summary = "Search for posts", description = "Returns posts matching the search query")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Search results retrieved successfully", 
-                    content = @Content(schema = @Schema(implementation = Page.class)))
-    })
-    @GetMapping("/search")
-    public ResponseEntity<Page<PostDto>> searchPosts(
-            @Parameter(description = "Search query") @RequestParam String query,
-            @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size) {
+    private Post convertToEntity(PostDto postDto) {
+        Post post = new Post();
+        post.setId(postDto.id());
+        post.setContent(postDto.content());
+        post.setMedia(postDto.media());
         
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Post> posts = postService.searchPosts(query, pageable);
-        
-        Page<PostDto> postDtos = posts.map(PostMapper::toDto);
-        
-        return ResponseEntity.ok(postDtos);
-    }
-    
-    /**
-     * Get trending posts.
-     *
-     * @param page the page number (0-based)
-     * @param size the page size
-     * @return page of post DTOs
-     */
-    @Operation(summary = "Get trending posts", description = "Returns trending posts based on engagement metrics")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Trending posts retrieved successfully", 
-                    content = @Content(schema = @Schema(implementation = Page.class)))
-    })
-    @GetMapping("/trending")
-    public ResponseEntity<Page<PostDto>> getTrendingPosts(
-            @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size) {
-        
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Post> posts = postService.getTrendingPosts(pageable);
-        
-        Page<PostDto> postDtos = posts.map(PostMapper::toDto);
-        
-        return ResponseEntity.ok(postDtos);
-    }
-    
-    /**
-     * Get posts by hashtag.
-     *
-     * @param hashtag the hashtag name
-     * @param page the page number (0-based)
-     * @param size the page size
-     * @return page of post DTOs
-     */
-    @Operation(summary = "Get posts by hashtag", description = "Returns posts containing the specified hashtag")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Posts retrieved successfully", 
-                    content = @Content(schema = @Schema(implementation = Page.class)))
-    })
-    @GetMapping("/hashtag/{hashtag}")
-    public ResponseEntity<Page<PostDto>> getPostsByHashtag(
-            @Parameter(description = "Hashtag name (without #)") @PathVariable String hashtag,
-            @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size) {
-        
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Post> posts = postService.getPostsByHashtag(hashtag, pageable);
-        
-        Page<PostDto> postDtos = posts.map(PostMapper::toDto);
-        
-        return ResponseEntity.ok(postDtos);
-    }
-    
-    /**
-     * Get replies to a post.
-     *
-     * @param id the parent post ID
-     * @param page the page number (0-based)
-     * @param size the page size
-     * @return page of reply post DTOs
-     */
-    @Operation(summary = "Get replies to a post", description = "Returns replies to the specified post")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Replies retrieved successfully", 
-                    content = @Content(schema = @Schema(implementation = Page.class))),
-        @ApiResponse(responseCode = "404", description = "Parent post not found")
-    })
-    @GetMapping("/{id}/replies")
-    public ResponseEntity<Page<PostDto>> getReplies(
-            @Parameter(description = "ID of the parent post") @PathVariable UUID id,
-            @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size) {
-        
-        // Check if parent post exists
-        if (!postService.findById(id).isPresent()) {
-            throw new ResourceNotFoundException("Post", "id", id);
+        // Set user
+        if (postDto.userId() != null) {
+            Optional<User> userOpt = userService.findById(postDto.userId());
+            userOpt.ifPresent(post::setUser);
         }
         
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Post> replies = postService.getReplies(id, pageable);
-        
-        Page<PostDto> replyDtos = replies.map(PostMapper::toDto);
-        
-        return ResponseEntity.ok(replyDtos);
-    }
-    
-    /**
-     * Create a reply to a post.
-     *
-     * @param parentId the parent post ID
-     * @param postDto the reply post details
-     * @param username the username of the reply creator
-     * @return the created reply post DTO
-     */
-    @Operation(summary = "Create a reply to a post", description = "Creates a reply to the specified post")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "Reply created successfully", 
-                    content = @Content(schema = @Schema(implementation = PostDto.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid input"),
-        @ApiResponse(responseCode = "404", description = "Parent post or user not found")
-    })
-    @PostMapping("/{parentId}/reply/{username}")
-    public ResponseEntity<PostDto> createReply(
-            @Parameter(description = "ID of the parent post") @PathVariable UUID parentId,
-            @Parameter(description = "Reply details") @Valid @RequestBody PostDto postDto,
-            @Parameter(description = "Username of the reply creator") @PathVariable String username) {
-        
-        User user = userService.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
-        
-        // Convert DTO to entity
-        Post reply = PostMapper.toEntity(postDto);
-        reply.setUser(user);
-        
-        // Create reply
-        Post savedReply = postService.createReply(parentId, reply);
-        
-        return ResponseEntity.status(HttpStatus.CREATED).body(PostMapper.toDto(savedReply));
-    }
-    
-    /**
-     * Create a repost.
-     *
-     * @param originalPostId the original post ID
-     * @param postDto the repost details
-     * @param username the username of the repost creator
-     * @return the created repost DTO
-     */
-    @Operation(summary = "Create a repost", description = "Creates a repost of the specified post")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "Repost created successfully", 
-                    content = @Content(schema = @Schema(implementation = PostDto.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid input"),
-        @ApiResponse(responseCode = "404", description = "Original post or user not found")
-    })
-    @PostMapping("/{originalPostId}/repost/{username}")
-    public ResponseEntity<PostDto> createRepost(
-            @Parameter(description = "ID of the original post") @PathVariable UUID originalPostId,
-            @Parameter(description = "Repost details") @Valid @RequestBody PostDto postDto,
-            @Parameter(description = "Username of the repost creator") @PathVariable String username) {
-        
-        User user = userService.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
-        
-        // Convert DTO to entity
-        Post repost = PostMapper.toEntity(postDto);
-        repost.setUser(user);
-        
-        // Create repost
-        Post savedRepost = postService.createRepost(originalPostId, repost);
-        
-        return ResponseEntity.status(HttpStatus.CREATED).body(PostMapper.toDto(savedRepost));
+        return post;
     }
 } 
