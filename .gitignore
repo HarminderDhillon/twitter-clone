@@ -1,23 +1,68 @@
-HELP.md
+# Next.js
+.next/
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env*.local
+.env
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Spring Boot
 target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+# IDE files
+.idea/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.vscode/
+*.sw?
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Build files
+dist/
+build/
+out/
+
+# Log files
+logs/
+*.log
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Dependency directories
+.pnp/
+.pnp.js
+
+# Misc
+.vercel
+.turbo
+
 ### STS ###
 .apt_generated
 .classpath
 .factorypath
-.project
 .settings
 .springBeans
 .sts4-cache
-
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
 
 ### NetBeans ###
 /nbproject/private/
@@ -25,15 +70,10 @@ target/
 /dist/
 /nbdist/
 /.nb-gradle/
-build/
 !**/src/main/**/build/
 !**/src/test/**/build/
-
-### VS Code ###
-.vscode/
 
 ### Application specific ###
 *.log
 .env
-application-*.properties
-.DS_Store 
+application-*.properties 

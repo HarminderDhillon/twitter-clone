@@ -1,6 +1,67 @@
-# Twitter Clone
+# Twitter Clone Application
 
-A Twitter clone application built with Spring Boot 3.x as the backend framework.
+This project is a Twitter clone application with a Spring Boot backend and a Next.js frontend.
+
+## Project Structure
+
+- `backend/`: Spring Boot application that provides RESTful API endpoints
+- Frontend: Next.js application with Tailwind CSS for styling
+
+## Getting Started
+
+### Prerequisites
+
+- Java 17 or higher
+- Node.js 16 or higher
+- npm or yarn
+- PostgreSQL database
+
+### Running the Backend
+
+1. Navigate to the project root directory
+2. Run `./mvnw spring-boot:run` to start the Spring Boot application
+3. The backend will be available at `http://localhost:8080`
+
+### Running the Frontend
+
+1. Navigate to the project root directory
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+4. Open your browser and visit `http://localhost:3000`
+
+## Features
+
+- View posts feed
+- View user profiles
+- Mock data is used when backend is not available
+
+## Technology Stack
+
+### Backend
+- Spring Boot
+- Spring Data JPA
+- PostgreSQL
+- Liquibase for database migrations
+
+### Frontend
+- Next.js
+- TypeScript
+- Tailwind CSS
+- React Hooks
+
+## Development
+
+This project is set up for local development with API proxying configured to redirect API calls to the backend server.
+
+## License
+
+This project is open source and available under the [MIT License](LICENSE).
 
 ## Features
 
