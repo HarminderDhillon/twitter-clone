@@ -2,223 +2,248 @@ package com.dhillon.twitterclone.controller;
 
 import com.dhillon.twitterclone.dto.UserDto;
 import com.dhillon.twitterclone.entity.User;
-import com.dhillon.twitterclone.exception.BadRequestException;
-import com.dhillon.twitterclone.exception.ResourceNotFoundException;
-import com.dhillon.twitterclone.repository.FollowRepository;
 import com.dhillon.twitterclone.service.UserService;
-import com.dhillon.twitterclone.util.UserMapper;
+import com.dhillon.twitterclone.repository.FollowRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.HashMap;
 
-/**
- * REST controller for user operations.
- */
 @RestController
 @RequestMapping("/users")
-@Tag(name = "Users", description = "User management APIs")
+@Tag(name = "User", description = "User management APIs")
 public class UserController {
-    
+
     private final UserService userService;
     private final FollowRepository followRepository;
-    
-    /**
-     * Constructor with dependencies.
-     *
-     * @param userService the user service
-     * @param followRepository the follow repository
-     */
+
     public UserController(UserService userService, FollowRepository followRepository) {
         this.userService = userService;
         this.followRepository = followRepository;
     }
-    
-    /**
-     * Get a user by username.
-     *
-     * @param username the username
-     * @return the user DTO
-     */
-    @Operation(summary = "Get a user by username", description = "Returns a user based on the provided username")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "User found", 
-                    content = @Content(schema = @Schema(implementation = UserDto.class))),
-        @ApiResponse(responseCode = "404", description = "User not found")
-    })
-    @GetMapping("/{username}")
-    public ResponseEntity<UserDto> getUserByUsername(
-            @Parameter(description = "Username of the user to retrieve") @PathVariable String username) {
-        User user = userService.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
-        
-        // Get follower counts
-        long followersCount = followRepository.countByFollowingId(user.getId());
-        long followingCount = followRepository.countByFollowerId(user.getId());
-        
-        return ResponseEntity.ok(UserMapper.toDtoWithCounts(user, followersCount, followingCount));
+
+    @GetMapping
+    @Operation(summary = "Get all users", description = "Retrieve a list of all users")
+    @ApiResponse(responseCode = "200", description = "Users retrieved successfully",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserDto.class)))
+    public ResponseEntity<List<UserDto>> getAllUsers() {
+        List<User> users = userService.searchUsers("");
+        List<UserDto> userDTOs = users.stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(userDTOs);
     }
-    
-    /**
-     * Create a new user.
-     *
-     * @param userDto the user details
-     * @return the created user DTO
-     */
-    @Operation(summary = "Create a new user", description = "Creates a new user with the provided details")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "User created successfully", 
-                    content = @Content(schema = @Schema(implementation = UserDto.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid input or username/email already taken")
-    })
+
+    @GetMapping("/{idOrUsername}")
+    @Operation(summary = "Get user by ID or username", description = "Retrieve a specific user by their ID or username")
+    @ApiResponse(responseCode = "200", description = "User retrieved successfully")
+    @ApiResponse(responseCode = "404", description = "User not found")
+    public ResponseEntity<?> getUser(
+            @Parameter(description = "ID or username of the user to retrieve", required = true)
+            @PathVariable String idOrUsername) {
+        try {
+            UUID id = UUID.fromString(idOrUsername);
+            Optional<User> userOpt = userService.findById(id);
+            if (userOpt.isPresent()) {
+                return ResponseEntity.ok(convertToDto(userOpt.get()));
+            } else {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("status", 404);
+                errorResponse.put("error", "Not Found");
+                errorResponse.put("message", "User not found with ID: " + id);
+                errorResponse.put("path", "/users/" + idOrUsername);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            }
+        } catch (IllegalArgumentException e) {
+            // Not a UUID, so treat as username
+            Optional<User> userOpt = userService.findByUsername(idOrUsername);
+            if (userOpt.isPresent()) {
+                return ResponseEntity.ok(convertToDto(userOpt.get()));
+            } else {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("status", 404);
+                errorResponse.put("error", "Not Found");
+                errorResponse.put("message", "User not found with username: " + idOrUsername);
+                errorResponse.put("path", "/users/" + idOrUsername);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            }
+        }
+    }
+
+    @PutMapping("/{idOrUsername}")
+    @Operation(summary = "Update user", description = "Update an existing user")
+    @ApiResponse(responseCode = "200", description = "User updated successfully")
+    @ApiResponse(responseCode = "404", description = "User not found")
+    public ResponseEntity<UserDto> updateUser(
+            @Parameter(description = "ID or username of the user to update", required = true)
+            @PathVariable String idOrUsername,
+            @Parameter(description = "Updated user data", required = true)
+            @RequestBody UserDto userDto) {
+        try {
+            UUID id = UUID.fromString(idOrUsername);
+            if (!userService.findById(id).isPresent()) {
+                return ResponseEntity.notFound().build();
+            }
+            User updatedUser = userService.updateUser(id, convertToEntity(userDto));
+            return ResponseEntity.ok(convertToDto(updatedUser));
+        } catch (IllegalArgumentException e) {
+            // Not a UUID, so treat as username
+            Optional<User> existingUser = userService.findByUsername(idOrUsername);
+            if (existingUser.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            User updatedUser = userService.updateUser(existingUser.get().getId(), convertToEntity(userDto));
+            return ResponseEntity.ok(convertToDto(updatedUser));
+        }
+    }
+
+    @DeleteMapping("/{idOrUsername}")
+    @Operation(summary = "Delete user", description = "Delete an existing user")
+    @ApiResponse(responseCode = "204", description = "User deleted successfully")
+    @ApiResponse(responseCode = "404", description = "User not found")
+    public ResponseEntity<Void> deleteUser(
+            @Parameter(description = "ID or username of the user to delete", required = true)
+            @PathVariable String idOrUsername) {
+        try {
+            UUID id = UUID.fromString(idOrUsername);
+            if (userService.findById(id).isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            userService.deleteUser(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            // Not a UUID, so treat as username
+            Optional<User> user = userService.findByUsername(idOrUsername);
+            if (user.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            userService.deleteUser(user.get().getId());
+            return ResponseEntity.noContent().build();
+        }
+    }
+
+    @GetMapping("/check-username")
+    @Operation(summary = "Check username availability", description = "Check if a username is available for registration")
+    @ApiResponse(responseCode = "200", description = "Username availability checked successfully")
+    public ResponseEntity<Map<String, Boolean>> isUsernameAvailable(
+            @Parameter(description = "Username to check", required = true)
+            @RequestParam String username) {
+        boolean available = userService.isUsernameAvailable(username);
+        Map<String, Boolean> response = Map.of("available", available);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/check-email")
+    @Operation(summary = "Check email availability", description = "Check if an email is available for registration")
+    @ApiResponse(responseCode = "200", description = "Email availability checked successfully")
+    public ResponseEntity<Map<String, Boolean>> isEmailAvailable(
+            @Parameter(description = "Email to check", required = true)
+            @RequestParam String email) {
+        boolean available = userService.isEmailAvailable(email);
+        Map<String, Boolean> response = Map.of("available", available);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/search")
+    @Operation(summary = "Search users", description = "Search for users by username or display name")
+    @ApiResponse(responseCode = "200", description = "Search results retrieved successfully")
+    public ResponseEntity<List<UserDto>> searchUsers(
+            @Parameter(description = "Search query", required = true)
+            @RequestParam String query) {
+        List<User> users = userService.searchUsers(query);
+        List<UserDto> userDtos = users.stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(userDtos);
+    }
+
     @PostMapping
-    public ResponseEntity<UserDto> createUser(
-            @Parameter(description = "User details") @Valid @RequestBody UserDto userDto) {
+    @Operation(summary = "Create user", description = "Create a new user")
+    @ApiResponse(responseCode = "201", description = "User created successfully")
+    @ApiResponse(responseCode = "400", description = "Invalid user data")
+    public ResponseEntity<?> createUser(
+            @Parameter(description = "User data for creating a new user", required = true)
+            @RequestBody UserDto userDto) {
+        
         // Check if username is available
         if (!userService.isUsernameAvailable(userDto.username())) {
-            throw new BadRequestException("Username is already taken");
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("status", 400);
+            errorResponse.put("error", "Bad Request");
+            errorResponse.put("message", "Username is already taken");
+            errorResponse.put("path", "/users");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
         }
         
         // Check if email is available
         if (!userService.isEmailAvailable(userDto.email())) {
-            throw new BadRequestException("Email is already registered");
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("status", 400);
+            errorResponse.put("error", "Bad Request");
+            errorResponse.put("message", "Email is already registered");
+            errorResponse.put("path", "/users");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
         }
         
-        // Convert DTO to entity
-        User user = UserMapper.toEntity(userDto);
-        
-        // Create user
+        User user = convertToEntity(userDto);
         User createdUser = userService.createUser(user);
-        
-        return ResponseEntity.status(HttpStatus.CREATED).body(UserMapper.toDto(createdUser));
+        return ResponseEntity.status(HttpStatus.CREATED).body(convertToDto(createdUser));
     }
     
     /**
-     * Update a user.
-     *
-     * @param username the username
-     * @param userDto the updated user details
-     * @return the updated user DTO
+     * Converts User entity to UserDto
      */
-    @Operation(summary = "Update a user", description = "Updates an existing user with the provided details")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "User updated successfully", 
-                    content = @Content(schema = @Schema(implementation = UserDto.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid input"),
-        @ApiResponse(responseCode = "404", description = "User not found")
-    })
-    @PutMapping("/{username}")
-    public ResponseEntity<UserDto> updateUser(
-            @Parameter(description = "Username of the user to update") @PathVariable String username,
-            @Parameter(description = "Updated user details") @Valid @RequestBody UserDto userDto) {
-        // Find user
-        User user = userService.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
+    private UserDto convertToDto(User user) {
+        int followersCount = (int) followRepository.countByFollowingId(user.getId());
+        int followingCount = (int) followRepository.countByFollowerId(user.getId());
         
-        // Update the user
-        User updatedUser = UserMapper.updateEntity(user, userDto);
-        User savedUser = userService.updateUser(user.getId(), updatedUser);
-        
-        // Get follower counts
-        long followersCount = followRepository.countByFollowingId(savedUser.getId());
-        long followingCount = followRepository.countByFollowerId(savedUser.getId());
-        
-        return ResponseEntity.ok(UserMapper.toDtoWithCounts(savedUser, followersCount, followingCount));
+        return new UserDto(
+            user.getId(),
+            user.getUsername(),
+            user.getEmail(),
+            user.getDisplayName(),
+            user.getBio(),
+            user.getLocation(),
+            user.getWebsite(),
+            user.getProfileImage(),
+            user.getHeaderImage(),
+            user.isVerified(),
+            user.getCreatedAt(),
+            followersCount,
+            followingCount,
+            null // no need to expose password
+        );
     }
     
     /**
-     * Delete a user.
-     *
-     * @param username the username
-     * @return no content response
+     * Converts UserDto to User entity
      */
-    @Operation(summary = "Delete a user", description = "Deletes an existing user")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "204", description = "User deleted successfully"),
-        @ApiResponse(responseCode = "404", description = "User not found")
-    })
-    @DeleteMapping("/{username}")
-    public ResponseEntity<Void> deleteUser(
-            @Parameter(description = "Username of the user to delete") @PathVariable String username) {
-        // Find user
-        User user = userService.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
-        
-        // Delete the user
-        userService.deleteUser(user.getId());
-        
-        return ResponseEntity.noContent().build();
-    }
-    
-    /**
-     * Search for users.
-     *
-     * @param query the search query
-     * @return list of user DTOs
-     */
-    @Operation(summary = "Search for users", description = "Returns users matching the search query")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Search results retrieved successfully", 
-                    content = @Content(schema = @Schema(implementation = List.class)))
-    })
-    @GetMapping("/search")
-    public ResponseEntity<List<UserDto>> searchUsers(
-            @Parameter(description = "Search query") @RequestParam String query) {
-        List<User> users = userService.searchUsers(query);
-        
-        List<UserDto> userDtos = users.stream()
-                .map(user -> {
-                    long followersCount = followRepository.countByFollowingId(user.getId());
-                    long followingCount = followRepository.countByFollowerId(user.getId());
-                    return UserMapper.toDtoWithCounts(user, followersCount, followingCount);
-                })
-                .collect(Collectors.toList());
-        
-        return ResponseEntity.ok(userDtos);
-    }
-    
-    /**
-     * Check if a username is available.
-     *
-     * @param username the username to check
-     * @return availability status
-     */
-    @Operation(summary = "Check username availability", description = "Checks if a username is available for registration")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Availability status retrieved successfully", 
-                    content = @Content(schema = @Schema(implementation = Boolean.class)))
-    })
-    @GetMapping("/check-username")
-    public ResponseEntity<Object> isUsernameAvailable(
-            @Parameter(description = "Username to check") @RequestParam String username) {
-        return ResponseEntity.ok(java.util.Map.of("available", userService.isUsernameAvailable(username)));
-    }
-    
-    /**
-     * Check if an email is available.
-     *
-     * @param email the email to check
-     * @return availability status
-     */
-    @Operation(summary = "Check email availability", description = "Checks if an email is available for registration")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Availability status retrieved successfully", 
-                    content = @Content(schema = @Schema(implementation = Boolean.class)))
-    })
-    @GetMapping("/check-email")
-    public ResponseEntity<Object> isEmailAvailable(
-            @Parameter(description = "Email to check") @RequestParam String email) {
-        return ResponseEntity.ok(java.util.Map.of("available", userService.isEmailAvailable(email)));
+    private User convertToEntity(UserDto userDto) {
+        User user = new User();
+        user.setId(userDto.id());
+        user.setUsername(userDto.username());
+        user.setEmail(userDto.email());
+        user.setDisplayName(userDto.displayName());
+        user.setBio(userDto.bio());
+        user.setLocation(userDto.location());
+        user.setWebsite(userDto.website());
+        user.setProfileImage(userDto.profileImage());
+        user.setHeaderImage(userDto.headerImage());
+        if (userDto.password() != null) {
+            user.setPasswordHash(userDto.password()); // Will be encoded in service
+        }
+        return user;
     }
 } 

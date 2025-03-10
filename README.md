@@ -117,11 +117,11 @@ src/
 │       ├── application.yml           # Application configuration
 │       ├── db/
 │       │   ├── changelog/            # Liquibase changelog files
-│       │   │   ├── changes/          # Individual change sets
-│       │   │   ├── sql/              # SQL-based migrations
-│       │   │   └── db.changelog-master.yaml  # Master changelog
-│       │   └── migration.backup/     # Backup of original Flyway migrations
-│       └── static/                   # Static resources
+│   │   │   ├── changes/          # Individual change sets
+│   │   │   ├── sql/              # SQL-based migrations
+│   │   │   └── db.changelog-master.yaml  # Master changelog
+│   │   └── migration.backup/     # Backup of original Flyway migrations
+│   └── static/                   # Static resources
 └── test/
     └── java/
         └── com/
@@ -392,3 +392,34 @@ To add a new migration:
 1. Create a new changeset file in the `changes/` directory or a new SQL file in the `sql/` directory
 2. Add the file to the master changelog (`db.changelog-master.yaml`)
 3. Run the application to apply the migration 
+
+## Recent Updates
+
+### API Endpoint Improvements (March 2025)
+
+We've made significant improvements to the API endpoints, focusing especially on the user management functionality:
+
+1. **Fixed Ambiguous URL Mappings**: Resolved issues with conflicting request mappings in the UserController. The application now correctly handles both UUID-based and username-based user lookups.
+
+2. **Improved Error Handling**: Enhanced error responses with detailed error messages and appropriate HTTP status codes.
+
+3. **Added Follower Count Integration**: Updated the API to accurately retrieve follower and following counts using the FollowRepository.
+
+4. **Username and Email Availability Checks**: Added dedicated endpoints to check if a username or email is already in use.
+
+5. **Consolidated Controller Logic**: Simplified the controller by combining similar methods and improving code organization.
+
+All API endpoints now have consistent behavior and properly follow RESTful principles.
+
+### API Endpoints Testing Status
+
+All endpoints have been tested and are working correctly:
+
+- ✅ GET `/api/users` - Get all users
+- ✅ GET `/api/users/{idOrUsername}` - Get user by ID or username
+- ✅ PUT `/api/users/{idOrUsername}` - Update user
+- ✅ DELETE `/api/users/{idOrUsername}` - Delete user
+- ✅ POST `/api/users` - Create new user
+- ✅ GET `/api/users/check-username?username={username}` - Check username availability
+- ✅ GET `/api/users/check-email?email={email}` - Check email availability
+- ✅ GET `/api/users/search?query={query}` - Search users 
